@@ -13,7 +13,7 @@
     <link href="https://fonts.googleapis.com/css?family=Boogaloo" rel="stylesheet">
     <link href="{{  asset('css/portal.css') }}" rel="stylesheet" />
     <link href="{{  asset('css/print.css') }}" rel="stylesheet" media="print" />
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.3/css/select2.min.css" rel="stylesheet" />
+    <link href="{{  asset('libs/select2/4.0.3/css/select2.min.css') }}" rel="stylesheet" />
     {# include 'Partials/_analytics.html.twig' #} 
   </head>
   <body>  {{ version }}
@@ -25,7 +25,7 @@
       </div>
       {{ render(controller('App\\Controller\\HomeController:footer')) }}          
       <script type="text/javascript" src="{{ asset('js/jquery-1.11.2.min.js') }}"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.3/js/select2.min.js"></script>
+<script src="{{  asset('libs/select2/4.0.3/js/select2.min.js') }}"></script>
 {% block footer_js_before %}{# especially for datatable #}{% endblock %}
 
 <script type="text/javascript" src="{{ asset('bootstrap/js/bootstrap.min.js') }}"></script>
