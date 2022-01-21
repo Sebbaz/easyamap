@@ -19,7 +19,7 @@ use Psr\Log\LoggerInterface;
  */
 class UserRepository extends ServiceEntityRepository implements PasswordUpgraderInterface
 {
-    private LoggerInterface $logger;
+    private $logger;
 
     public function __construct(ManagerRegistry $registry, LoggerInterface $logger)
     {
