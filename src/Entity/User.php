@@ -61,6 +61,11 @@ class User implements UserInterface, EquatableInterface
     private $password;
 
     /**
+     * @var ?string plain password. Do not store it !!
+     */
+    private $plainPassword;
+
+    /**
      * @ORM\Column(type="json")
      */
     private $roles = [];
@@ -291,14 +296,32 @@ class User implements UserInterface, EquatableInterface
         $this->password = $password;
         return $this;
     }
+
     /**
      * Get password
      *
      * @return string 
      */
-    public function getPassword(): string
+    public function getPassword(): ?string
     {
         return $this->password;
+    }
+
+
+    /**
+     * @return string
+     */
+    public function getPlainPassword(): ?string
+    {
+        return $this->plainPassword;
+    }
+
+    /**
+     * @param string $plainPassword
+     */
+    public function setPlainPassword(?string $plainPassword): void
+    {
+        $this->plainPassword = $plainPassword;
     }
     
     public function getFarms()
@@ -332,7 +355,7 @@ class User implements UserInterface, EquatableInterface
     public function eraseCredentials()
     {
         // clear plain text password (must be called after authentication)
-        $this->setPassword("");
+        $this->setPlainPassword(null);
     }
 
      public function isEnabled(): bool
