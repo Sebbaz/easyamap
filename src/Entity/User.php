@@ -358,7 +358,7 @@ class User implements UserInterface, EquatableInterface
         $this->setPlainPassword(null);
     }
 
-     public function isEnabled(): bool
+     public function isEnabled(): ?bool
      {
         return $this->isActive;
     }
@@ -381,7 +381,7 @@ class User implements UserInterface, EquatableInterface
      *
      * @return boolean 
      */
-    public function getIsAdmin(): bool
+    public function getIsAdmin(): ?bool
     {        
         return $this->isAdmin;
     }
@@ -404,7 +404,7 @@ class User implements UserInterface, EquatableInterface
      *
      * @return boolean 
      */
-    public function getIsAdherent(): bool
+    public function getIsAdherent(): ?bool
     {        
         return $this->isAdherent;
     }
