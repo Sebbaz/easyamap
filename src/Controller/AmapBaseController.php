@@ -2,12 +2,14 @@
 
 namespace App\Controller;
 
-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Bundle\FrameworkBundle\Controller\Controller;
 use Symfony\Component\HttpFoundation\Session\Session;
 use Symfony\Component\HttpFoundation\Request;
 
-
-class AmapBaseController extends AbstractController
+//Obligation d'utiliser Symfony\Bundle\FrameworkBundle\Controller\Controller (deprecated)
+// sinon on perd l'injection du service mailer avec swiftmailer
+// pour passer à AbstractController, il faut revoir la gestion des injections avec $this->get(service) et les récupérer via les interfaces
+class AmapBaseController extends Controller
 {    
   
     public function preExecute(Request $request) {
