@@ -132,7 +132,12 @@ class PaymentRepository extends EntityRepository
        */
 
             
-        $all = array();       
+        $all = array();
+
+        $discountFactor = 1;
+        if ($contract->getDiscount() != null) {
+            $discountFactor = 1-($contract->getDiscount()/100);
+        }
         
         foreach ($tab as $line) {
             if ($farms_received === false || !in_array($line['id_farm'],$farms_received)) {
@@ -150,10 +155,10 @@ class PaymentRepository extends EntityRepository
                 }
                 $all[$line['id_farm']]['distri_amount'][] = array(
                     'date'=>$line['date'],
-                    'amount'=>$line['amount'],
+                    'amount'=>$line['amount']*$discountFactor,
                     'has_ratio'=>$line['has_ratio']
                     );                
-                $all[$line['id_farm']]['total_amount'] += $line['amount'];                
+                $all[$line['id_farm']]['total_amount'] += $line['amount']*$discountFactor;
                 $all[$line['id_farm']]['has_ratio_products'] = $all[$line['id_farm']]['has_ratio_products'] || $line['has_ratio'];
             }
         }
@@ -219,7 +224,7 @@ class PaymentRepository extends EntityRepository
     private function addPayment($amount,$user,$farm,$contract, $payment_types,$split_payments,$checkPayableTo,$chosen_payment) {
         $em = $this->getEntityManager();
         $payment = new Payment();
-        $payment->setAmount($amount);
+        $payment->setAmount(round($amount,2));
         $payment->setFkUser($user);
         $payment->setFkFarm($farm);
         $payment->setFkContract($contract);        
@@ -306,6 +311,9 @@ class PaymentRepository extends EntityRepository
             $tab = $this->dispatchEquitable($tab);
         }
         $tab = array_values($tab);
+        foreach($tab as $i => $item) {
+            $tab[$i][1] = round($item[1],2);
+        }
         return $tab;
     }
     
@@ -523,7 +531,7 @@ class PaymentRepository extends EntityRepository
         $sql = "select month(date), round(sum(price),2) as somme 
             from (
             select fk_purchase, date, p.quantity*price as price
-            from purchase_ratio_price prp
+            from view_purchase_ratio_price prp
             left join purchase p on p.id_purchase = prp.fk_purchase
             where date between '".$year."-01-01' AND '".$year."-12-31'";
             if ($id_user != null) {
@@ -548,6 +556,16 @@ class PaymentRepository extends EntityRepository
             if ($id_farm != null) 
                 $sql .= " and pr.fk_farm=".$id_farm;
             $sql .= " group by pu.id_purchase, di.date
+            union all
+            select null as id_purchase, p.received_at as date, p.received as price
+            from payment p
+            where 1=1";
+            if ($id_user != null)
+                $sql .= " and p.fk_user=".$id_user;
+        if ($id_farm != null)
+            $sql .= " and p.fk_farm=".$id_farm;
+        $sql .= " and p.received_at between '".$year."-01-01' AND '".$year."-12-31'
+            and not exists (select fk_payment from purchase pu where pu.fk_payment = p.id_payment)
             ) pre_somme
             group by month(date)";
         $stmt = $conn->prepare($sql);
@@ -566,7 +584,7 @@ class PaymentRepository extends EntityRepository
         return array('graph' => $out, 'total' => $total);
     }
     
-    public function majStat($id_payment) {
+   /* public function majStat($id_payment) {
         $conn = $this->getEntityManager()->getConnection();
         try {
             $sql = "delete from purchase_ratio_price
@@ -615,7 +633,7 @@ class PaymentRepository extends EntityRepository
             return false;
         }
         return true;
-    }
+    }*/
     
     public function getAllYears() 
     {

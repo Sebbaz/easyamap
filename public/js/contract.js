@@ -32,36 +32,65 @@ var options2 = $.extend({}, options1);
 options2.onSelect = function () {};
   //ajout du nom des fermes
 var products = [];
+let tabIterate=1;
 $(document).ready(function () {
   $('.entity').css({'border':'1px solid #CCC', 'padding':'10px','background-color':'#FAFAFA'});
+  let lineIterate = 0;
   $('.entity .custom-checkbox').each(function () {
     var farm = $(this).find('.farm-checkbox').html();
     if (typeof products[farm] == 'undefined')
-      products[farm] = 0;
-    products[farm]++;      
+      products[farm] = {"first":  lineIterate, "last": lineIterate, "tab":tabIterate++};
+    products[farm]["last"] = lineIterate++;
   });
-  
+
+  let beforeLines = [];
+  let afterLines = [];
+
+  let html = '<ul class="nav nav-tabs" role="tablist" id="amap-tabs">';
+  let first = true;
+  for(let farm in products) {
+      beforeLines[products[farm]["first"]] = '<div class="tab" id="tab-'+products[farm]["tab"]+'" '+(first?'':' style="display:none;"')+'><div class="page-header"><a href="#" data-toggle="tooltip" data-placement="bottom" title="Tout cocher / décocher" class="farm-header btn btn-primary">'+farm+'</a></div>';
+      afterLines[products[farm]["last"]] = '</div>';
+      html += '<li'+(first?' class="active"':'')+'><a class="custom-tab" data-tab="'+products[farm]["tab"]+'" href="#">'+farm+'</a></li>';
+      first = false;
+  }
+    html += '</ul>';
   var iterate = 0;
-  var next = 0
+
+
+
+
+
   $('.entity .custom-checkbox').each(function () {
-    if (iterate == next)
-    {      
-      var farm = $(this).find('.farm-checkbox').html();      
-      $(this).before('<div class="page-header">'+farm+'</div>');
-      next = products[farm];
-      iterate = 0;
-    }   
+
+
+      if (beforeLines[iterate] != null) {
+          html += beforeLines[iterate];
+        }
+      html += $(this)[0].outerHTML;
+      if (afterLines[iterate] != null) {
+          html += afterLines[iterate];
+      }
     iterate++;
+
   });
+
+
+    document.getElementById("contract_products").innerHTML = html;
+
+    setTimeout(()=>{
+        initTabs();
+    },500);
+
   
-  $('.page-header').click(function () {
-    var farm1 = $(this).html();
+  $('.farm-header').click((e)=> {
+    e.preventDefault();
+    var farm1 = e.currentTarget.innerHTML;//$(this).html();
     var all_checked = true;
     
     $('.entity .custom-checkbox').each(function () {
-      var farm2 = $(this).find('.farm-checkbox').html(); 
-      if (farm1 == farm2 && !$(this).find('input[type=checkbox]').prop('checked'))
-      {
+      var farm2 = $(this).find('.farm-checkbox').html();
+      if (farm1 == farm2 && !$(this).find('input[type=checkbox]').prop('checked')) {
         all_checked = false;
         return false;
       }      
@@ -69,23 +98,21 @@ $(document).ready(function () {
     
     $('.entity .custom-checkbox').each(function () {
       var farm2 = $(this).find('.farm-checkbox').html(); 
-      if (farm1 == farm2)
-      {
+      if (farm1 == farm2) {
         $(this).find('input[type=checkbox]').prop('checked', !all_checked);        
       }      
     });
-    
   });
   
-  $('.entity label:first-child').after('<br /><button class="btn btn-xs btn-info" onclick="checkAll();return false;">Tout cocher / décocher</a>');
+  //$('.entity label:first-child').after('<br /><button class="btn btn-xs btn-info" onclick="checkAll();return false;">Tout cocher / décocher</a>');
   
   $("#contract_periodStart, #contract_periodEnd").datepicker(options1);
-  $("#contract_fillDateEnd, #contract_countPurchaseSince").datepicker(options2);
+  $("#contract_fillDateEnd, #contract_fillDateStart, #contract_countPurchaseSince, #contract_dateTest").datepicker(options2);
   
   //on disable les produits ayant déjà eu des commandes
   $('.entity .custom-checkbox').each(function () {
         var $checkbox = $(this).find('input[type=checkbox]');
-        if (typeof product_purchased[$checkbox.val()] != 'undefined') {
+        if (typeof product_purchased != 'undefined' && typeof product_purchased[$checkbox.val()] != 'undefined') {
             $checkbox.addClass('checkbox-disabled');
             $checkbox.click(function () {return false;})
             $(this).attr('title',"Il n'est pas possible de retirer ce produit car il fait déjà l'objet d'une ou plusieurs commandes")
@@ -93,7 +120,7 @@ $(document).ready(function () {
     });
     
     //on empeche de changer la date si des commandes sont déjà passées
-    if (!can_be_deleted) {
+    if (typeof can_be_deleted != 'undefined' && !can_be_deleted) {
         $("#contract_periodStart, #contract_periodEnd").attr("disabled", true);
     }
   
@@ -145,4 +172,41 @@ function displayDistributionsBetween(dateStart, dateEnd)
       }
     });
   }
+}
+
+function initTabs() {
+
+    document.querySelectorAll('.custom-tab').forEach(e=>{
+        e.addEventListener("click",e=> {
+            e.preventDefault();
+            e.stopPropagation();
+            let id = e.target.getAttribute("data-tab");
+            displayTable(id);
+            activeTab(id);
+            window.sessionStorage.setItem("dispo-farm", id);
+            return false;
+        });
+    });
+
+    if (window.sessionStorage.getItem("dispo-farm") != null) {
+        let id = window.sessionStorage.getItem("dispo-farm");
+        displayTable(id);
+        activeTab(id);
+    }
+}
+
+function displayTable(id) {
+    document.querySelectorAll('.tab').forEach(e=>{
+        e.style.display = e.id == "tab-"+id  ? "table" : "none";
+    });
+}
+function activeTab(id) {
+    document.querySelectorAll('.custom-tab').forEach(e=>{
+        if (e.getAttribute("data-tab")==id) {
+            e.parentNode.classList.add('active');
+        }
+        else {
+            e.parentNode.classList.remove('active');
+        }
+    });
 }

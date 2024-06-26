@@ -2,9 +2,6 @@
 {% block header_title %}Liste distribution par {{ group_by=='farm'?'producteur':'adhérent' }}{% endblock %}
 {% block header_css %}
 <link href="{{  asset('jquery-ui/jquery-ui.min.css') }}" rel="stylesheet" />
-<style type="text/css" media="print">
-  @page { size: landscape; }
-</style>
 {% endblock %}
 
 {% block body %}
@@ -101,8 +98,21 @@
             </table>
         </div>
     </div>
-                 
-              {# dupliquer la structure du tableau ici pour l'export Excel #}   
+
+    {%  if urlTemplate == 'produits_a_recuperer/%DATE%/%NB%' %}
+    <div class="row">
+        <div class="col-md-12">
+            <a href="{{ path('list_distribution_adherent') }}">Liste complète par adhérent</a>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-12">
+            <a href="{{ path('list_distribution_farm') }}">Liste complète par producteur</a>
+        </div>
+    </div>
+    {%  endif %}
+
+    {# dupliquer la structure du tableau ici pour l'export Excel #}
     <div style="display:none;"> 
         <table id="table-excel">            
             {% if direction == 'H' or list|length>1 %}

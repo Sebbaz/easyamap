@@ -7,7 +7,7 @@ use App\Entity\User;
 
 class ContractRepository extends EntityRepository 
 {
-    public function findAllOrderByIdDesc($user)
+    public function findAllOrderByIdDesc($user,$farmer=false)
     {
         //test branch
         $params = [];
@@ -27,7 +27,14 @@ class ContractRepository extends EntityRepository
                 from contract c 
                 left join distribution d on d.date between c.period_start and c.period_end 
                 left join contract_product cp on cp.fk_contract = c.id_contract ";
-        if ($user->hasRole(User::ROLE_ADMIN)) {
+        if ($farmer) {
+            $sql .= " left join product p on p.id_product = cp.fk_product
+                left join farm f on f.id_farm = p.fk_farm                
+                left join user u on u.id_user = c.fk_user
+                where f.fk_user=:id_user";
+            $params['id_user'] = $user->getIdUser();
+        }
+        elseif ($user->hasRole(User::ROLE_ADMIN)) {
             $sql .= " left join user u on u.id_user = c.fk_user";
         }
         elseif ($user->hasRole(User::ROLE_REFERENT)) {
@@ -36,12 +43,6 @@ class ContractRepository extends EntityRepository
                 left join referent r on r.fk_farm = f.id_farm
                 left join user u on u.id_user = c.fk_user
                 where r.fk_user=:id_user";
-            $params['id_user'] = $user->getIdUser();
-        } elseif ($user->hasRole(User::ROLE_FARMER)) {
-            $sql .= " left join product p on p.id_product = cp.fk_product
-                left join farm f on f.id_farm = p.fk_farm                
-                left join user u on u.id_user = c.fk_user
-                where f.fk_user=:id_user";
             $params['id_user'] = $user->getIdUser();
         }
         $sql .= " group by c.id_contract
@@ -60,7 +61,8 @@ class ContractRepository extends EntityRepository
             count(distinct(d.id_distribution)) as nbDistribution,
             min(d.date) as firstDistribution,
             c.fill_date_end as fillDateEnd,
-            case when c.fill_date_end <= date_sub(now(),interval 1 hour) then 1 else 0 end as isArchive
+            c.auto_end_hour as autoEndHour, 
+            case when c.period_end <= date_sub(now(),interval 1 hour) then 1 else 0 end as isArchive
             from contract c
             left join distribution d on d.date between c.period_start and c.period_end
             where c.is_visible=1
@@ -361,7 +363,7 @@ class ContractRepository extends EntityRepository
           $sql .= " AND pr.fk_farm=:id_farm";
           $params['id_farm'] = $id_farm;
         }
-        $sql .= "GROUP BY u.lastname, pr.id_product,d.date ORDER BY f.sequence, pr.sequence, d.date, u.lastname";
+        $sql .= " GROUP BY u.lastname, pr.id_product,d.date ORDER BY f.sequence, pr.sequence, d.date, u.lastname";
         $stmt = $conn->prepare($sql);
         $stmt->execute($params);
         $tab = $stmt->fetchAll(\PDO::FETCH_ASSOC);
@@ -528,4 +530,5 @@ class ContractRepository extends EntityRepository
         return $stmt->fetch(\PDO::FETCH_COLUMN)>0;
         
     }
+
 }

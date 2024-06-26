@@ -7,7 +7,9 @@
 
     
   <div class="col-md-6 col-md-offset-3 filterable">
-    <div class="page-header">Contrats en cours</div>
+
+{% if isArchive == false %}
+    <div class="page-header">Contrats ouverts</div>
     {% set hasOccurence = false %}
     {% for contract in contracts %}
       {% if contract.isActive %}
@@ -16,13 +18,28 @@
       {% endif %}
     {% endfor %}
     {% if not hasOccurence %}
+    <p class="text-muted">Pas de contrat ouvert.</p>
+    {% endif %}
+
+    <div class="page-header">Contrats en cours</div>
+    {% set hasOccurence = false %}
+    {% for contract in contracts %}
+      {% if not contract.isActive and not contract.isArchive %}
+        {% set hasOccurence = true %}
+        {% include 'Purchase/_index_contract.html.twig' with {'contract':contract, 'size':'M', 'style':'default', 'filled':filled}%}
+      {% endif %}
+    {% endfor %}
+    {% if not hasOccurence %}
     <p class="text-muted">Pas de contrat en cours.</p>
     {% endif %}
 
+    <p><a href="{{ path('contrat_list_archives') }}">Archives</a></p>
+{% else %}
+    <p><a href="{{ path('contrat_list') }}">Contrats en cours</a></p>
     <div class="page-header">Archives</div>
     {% set hasOccurence = false %}
     {% for contract in contracts %}
-      {% if not contract.isActive and contract.isArchive %}
+      {% if contract.isArchive %}
         {% set hasOccurence = true %}
         {% include 'Purchase/_index_contract.html.twig' with {'contract':contract, 'size':'M', 'style':'default', 'filled':filled}%}  
       {% endif %}
@@ -31,19 +48,8 @@
     <p class="text-muted">Pas de contrat archivé.</p>
     {% endif %}
 
-    <div class="page-header">Contrats fermés</div>
-    {% set hasOccurence = false %}
-    {% for contract in contracts %}
-      {% if not contract.isActive and not contract.isArchive %}
-        {% set hasOccurence = true %}
-        {% include 'Purchase/_index_contract.html.twig' with {'contract':contract, 'size':'M', 'style':'default', 'filled':filled}%}  
-      {% endif %}
-    {% endfor %}
-    {% if not hasOccurence %}
-    <p class="text-muted">Pas de contrat fermé.</p>
-    {% endif %}
+{%  endif %}
   </div>
-  
     <div class="col-md-3">
     <div class="input-group">
        <input type="text" class="form-control" placeholder="Rechercher" id="search">

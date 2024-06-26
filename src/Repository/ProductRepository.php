@@ -27,10 +27,13 @@ class ProductRepository extends EntityRepository
       ->getResult();
   }
   
-  public function findForFarm($farm) {
-      return $this->createQueryBuilder('p')
-      ->where('p.fkFarm =:farm')
-      ->orderBy('p.sequence')
+  public function findForFarm($farm, $filterProductId = []) {
+      $qb = $this->createQueryBuilder('p')
+      ->where('p.fkFarm =:farm');
+      if (count($filterProductId) > 0) {
+          $qb->andWhere($qb->expr()->in('p.idProduct', $filterProductId));
+      }
+      return  $qb->orderBy('p.sequence')
       ->setParameter('farm',$farm)
       ->getQuery()
       ->getResult();
@@ -125,5 +128,51 @@ class ProductRepository extends EntityRepository
             return false;
         }
         return true;
-    }  
+    }
+
+    public function getAllProducts() {
+      $conn = $this->getEntityManager()->getConnection();
+      $sql = "select p.id_product, f.label as farm, p.label, p.unit, p.description, p.base_price, p.ratio, p.is_active, p.is_subscription, p.is_certified, p.created_at, p.updated_at
+            from product p
+            left join farm f on f.id_farm = p.fk_farm
+            where f.is_active = 1
+            and p.is_active = 1
+            order by f.sequence, p.sequence";
+        $r = $conn->query($sql);
+        return $r->fetchAll(\PDO::FETCH_ASSOC);
+    }
+
+    public function getProductsMulti($farmsMulti) {
+        $conn = $this->getEntityManager()->getConnection();
+        $nb_farms = count($farmsMulti);
+        for($i = 0; $i < $nb_farms; $i++) {
+        $sql = "select db, id_farm, farm_label, id_product, product_label from (";
+        foreach($farmsMulti as $farm) {
+            $sql .= "SELECT (SELECT name FROM ".$farm['db'].".setting) as db,
+            f.id_farm,
+            f.label as farm_label,
+            p.id_product,
+            concat(p.label,' ',p.unit) as product_label,
+            f.sequence fseq,
+            p.sequence pseq
+            from ".$farm['db'].".product p
+            left join farm f on f.id_farm = p.fk_farm
+            where p.is_active=1";
+            if ($i < $nb_farms-1) {
+                $sql .= "
+UNION";
+            }
+        }
+    }
+    $sql .= ") t
+    ORDER BY db, fseq, pseq";
+        $r = $conn->query($sql);
+        $tab = $r->fetchAll(\PDO::FETCH_ASSOC);
+        $out = [];
+        foreach($tab as $item) {
+           // $key =
+           // if (!isset($out[]))
+        }
+
+    }
 }

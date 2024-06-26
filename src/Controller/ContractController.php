@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\Session\Session;
 use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 use Symfony\Component\HttpFoundation\Request;
 
@@ -11,6 +12,7 @@ use Symfony\Component\Form\Extension\Core\Type\SubmitType;
 use App\Entity\Contract;
 use App\Form\ContractType;
 use App\Util\Utils;
+use App\Entity\User;
 
 /**
  * Contract controller.
@@ -26,7 +28,10 @@ class ContractController extends AmapBaseController
     public function index()
     {
         $this->denyAccessUnlessGranted('ROLE_REFERENT');
-        
+
+        $session = new Session();
+        $session->set('role', 'ROLE_REFERENT');
+
         $em = $this->getDoctrine()->getManager();
         $user = $this->get('security.token_storage')->getToken()->getUser();
         
@@ -40,12 +45,13 @@ class ContractController extends AmapBaseController
     }
     
     public function indexFarmer() {
-        $this->denyAccessUnlessGranted('ROLE_FARMER');
-        
+        $this->denyAccessUnlessGranted(User::ROLE_FARMER);
+        $session = new Session();
+        $session->set('role',User::ROLE_FARMER);
         $em = $this->getDoctrine()->getManager();
         $user = $this->get('security.token_storage')->getToken()->getUser();
         
-        $entities = $em->getRepository('App\Entity\Contract')->findAllOrderByIdDesc($user);
+        $entities = $em->getRepository('App\Entity\Contract')->findAllOrderByIdDesc($user, true);
         
         return $this->render('Contract/indexFarmer.html.twig', array(
             'entities' => $entities,            
@@ -66,7 +72,8 @@ class ContractController extends AmapBaseController
         $entity = new Contract();
         $form = $this->createCreateForm($entity);
         $form->handleRequest($request);
-        $values = $request->request->get('amap_orderbundle_contract');
+        //$values = $request->request->get('amap_orderbundle_contract');
+        $values = $request->request->all()['contract'];
         $entity->setPeriodStart(\DateTime::createFromFormat('Y-m-d', trim($values['periodStart'])));
         $entity->setPeriodEnd(\DateTime::createFromFormat('Y-m-d', trim($values['periodEnd'])));
         $entity->setFkUser($user);
@@ -74,7 +81,6 @@ class ContractController extends AmapBaseController
         if ($form->isValid()) {      
             $em->persist($entity);
             $em->flush();
-              
             
             //obsolète : détection des confilts
           /*  $conflicts = $em->getRepository('App\Entity\Contract')->getOverlappingContractsWithSameProducts($entity->getIdContract());
@@ -310,7 +316,7 @@ class ContractController extends AmapBaseController
         $em->flush();
 
 
-        return $this->redirect($this->generateUrl('contract'));
+        return $this->redirect($this->generateUrl('contract_index'));
     }
 
     /**
@@ -385,8 +391,7 @@ class ContractController extends AmapBaseController
         $farm = null;
         if ($id_farm != null)
             $farm = $em->getRepository('App\Entity\Farm')->find($id_farm);
-        
-        //on vérifie si la farm passée en paramètre est autorisée   
+        //on vérifie si la farm passée en paramètre est autorisée
         if ($id_farm != null && !$user->getIsAdmin()) { 
             $id_farms = array();
             foreach ($farms as $each_farm) {

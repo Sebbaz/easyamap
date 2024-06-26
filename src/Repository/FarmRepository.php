@@ -4,23 +4,28 @@ namespace App\Repository;
 
 use Doctrine\ORM\EntityRepository;
 use App\Entity\User;
+use Symfony\Component\HttpFoundation\Session\Session;
 
 class FarmRepository extends EntityRepository 
 {
     public function findAllOrderByLabel($user)
     {
-       $qb = $this->createQueryBuilder('f');
-       
-       if($user->hasRole(User::ROLE_REFERENT) && !$user->hasRole(User::ROLE_ADMIN))
-       {
+        $session = new Session();
+        $role = User::ROLE_REFERENT;
+        if ($session->has('role')) {
+            $role = $session->get('role');
+        }
+        $qb = $this->createQueryBuilder('f');
+        if ($role == User::ROLE_FARMER && !$user->hasRole(User::ROLE_ADMIN)) {
+            $qb->where('f.fkUser = :user')
+                ->setParameter('user', $user);
+        }
+        elseif($role == User::ROLE_REFERENT && !$user->hasRole(User::ROLE_ADMIN)) {
             $qb->leftJoin('App\Entity\Referent','r','WITH','r.fkFarm = f.idFarm')
             ->where('r.fkUser = :user')
             ->setParameter('user', $user);
-       }
-       elseif ($user->hasRole(User::ROLE_FARMER) && !$user->hasRole(User::ROLE_ADMIN)) {
-           $qb->where('f.fkUser = :user')
-              ->setParameter('user', $user);
-        }       
+        }
+
         $qb->addOrderBy('f.isActive', 'DESC')
          ->addOrderBy('f.sequence');
          return $qb->getQuery()->getResult();
@@ -165,5 +170,38 @@ class FarmRepository extends EntityRepository
              $this->payment_freqs = $r->fetchAll(\PDO::FETCH_COLUMN|\PDO::FETCH_GROUP);
         }
         return $this->payment_freqs[$id_farm];
+    }
+
+    public function getAllFarms() {
+        $conn = $this->getEntityManager()->getConnection();
+        $sql = "select id_farm, label, product_type, check_payable_to, description, link 
+            from farm
+            where is_active=1
+            order by sequence";
+        $r = $conn->query($sql);
+        return $r->fetchAll(\PDO::FETCH_ASSOC);
+    }
+
+    public function getFarmsMulti($farms, $db) {
+        $conn = $this->getEntityManager()->getConnection();
+        $farms_id = [];
+        foreach($farms as $farm) {
+            $farms_id[] = $farm->getIdFarm();
+        }
+
+        $sql = "select distinct db, id_farm, is_cur_db from (
+                    select c2.db, c2.id_farm, 0 as is_cur_db
+                    from amap_corresp.farm_corresp c2
+                    left join amap_corresp.farm_corresp c1 on c1.id_farm_entity = c2.id_farm_entity
+                    WHERE c1.id_farm IN(" . implode(",", $farms_id) . ") 
+                    and c1.db=:db
+                    and c2.db<>:db
+                    union
+                    select '" . $db . "' as db, id_farm, 1 as is_cur_db
+                    from " . $db . ".farm
+                    WHERE id_farm IN(" . implode(",", $farms_id) . ")
+                    ) t ORDER BY db, id_farm";
+        $r = $conn->executeQuery($sql, array('db' => $db));
+        return $r->fetchAll(\PDO::FETCH_ASSOC);
     }
 }

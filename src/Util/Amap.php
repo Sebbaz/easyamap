@@ -37,6 +37,9 @@ class Amap {
         if (strpos($link, 'attikcreation')!==false) {
             $this->redirect('https://faverolles.easyamap.fr');			
         }
+        if (strpos($link, 'amappdelasalle')!==false) {
+            $this->redirect('https://cassardieres.easyamap.fr');
+        }
         foreach($this->sites as $domain => $info) {
             if (strpos($link,$domain) !== false) {
                 $this->name = $this->sites[$domain][0];
@@ -64,6 +67,10 @@ Merci de revenir dans quelques instants.<br /><img src='https://www.easyamap.fr/
     {
         header('Location: '.$url);
         exit;
+    }
+
+    static public function isEasyamapMainServer() {
+        return strpos($_SERVER['HTTP_HOST'], 'easyamap.fr')!==false;
     }
 }
 

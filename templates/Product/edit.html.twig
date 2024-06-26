@@ -30,5 +30,10 @@
 {% endblock %}
 {% block footer_js %}
 <script type="text/javascript" src="{{ asset('js/form.js') }}"></script>
+<script>
+    $("#product_basePrice").keyup(()=>{
+        $("#product_basePrice").val($("#product_basePrice").val().replace(/[^0-9\.,]+/g, ''));
+    });
+</script>
 {% endblock %}
 

@@ -48,13 +48,35 @@ class Contract
      * @ORM\Column(name="period_end", type="date", nullable=true)
      */
     private $periodEnd;
-    
+
+
     /**
      * @var \DateTime
      *
      * @ORM\Column(name="fill_date_end", type="date", nullable=true)
      */
     private $fillDateEnd;
+
+    /**
+     * @var \DateTime
+     *
+     * @ORM\Column(name="fill_date_start", type="date", nullable=true)
+     */
+    private $fillDateStart;
+
+    /**
+     * @var integer
+     *
+     * @ORM\Column(name="auto_start_hour", type="integer", nullable=true)
+     */
+    private $autoStartHour;
+
+    /**
+     * @var integer
+     *
+     * @ORM\Column(name="auto_end_hour", type="integer", nullable=true)
+     */
+    private $autoEndHour;
 
     /**
     * @ORM\ManyToMany(targetEntity="App\Entity\Product")
@@ -73,8 +95,14 @@ class Contract
      * @ORM\Column(name="count_purchase_since", type="date", nullable=true)
      */
     private $countPurchaseSince;
-    
-    
+
+    /**
+     * @var float
+     *
+     * @ORM\Column(name="discount", type="float", precision=10, scale=0, nullable=true)
+     */
+    private $discount;
+
      public function __construct() {
          $this->products = new ArrayCollection();
      }
@@ -130,6 +158,42 @@ class Contract
     }
 
     /**
+     * @return int
+     */
+    public function getAutoStartHour()
+    {
+        return $this->autoStartHour;
+    }
+
+    /**
+     * @param int $autoStartHour
+     * @return Contract
+     */
+    public function setAutoStartHour($autoStartHour)
+    {
+        $this->autoStartHour = $autoStartHour;
+        return $this;
+    }
+
+    /**
+     * @return int
+     */
+    public function getAutoEndHour()
+    {
+        return $this->autoEndHour;
+    }
+
+    /**
+     * @param int $autoEndHour
+     * @return Contract
+     */
+    public function setAutoEndHour($autoEndHour)
+    {
+        $this->autoEndHour = $autoEndHour;
+        return $this;
+    }
+
+    /**
      * Get periodEnd
      *
      * @return \DateTime 
@@ -147,7 +211,9 @@ class Contract
      */
     public function setFillDateEnd($fillDateEnd)
     {
-        $this->fillDateEnd = $fillDateEnd;
+        if ($fillDateEnd != null) {
+            $this->fillDateEnd = $fillDateEnd;
+        }
 
         return $this;
     }
@@ -161,6 +227,32 @@ class Contract
     public function getFillDateEnd()
     {
         return $this->fillDateEnd;
+    }
+
+    /**
+     * Set fillDateEnd
+     *
+     * @param \DateTime $fillDateStart
+     * @return Contract
+     */
+    public function setFillDateStart($fillDateStart)
+    {
+        if ($fillDateStart != null) {
+            $this->fillDateStart = $fillDateStart;
+        }
+
+        return $this;
+    }
+
+    /**
+     * Get fillDateEnd
+     *
+     * @return \DateTime
+     */
+
+    public function getFillDateStart()
+    {
+        return $this->fillDateStart;
     }
     
     
@@ -209,6 +301,24 @@ class Contract
         $this->products->add($product);
         return $this;
     }
+
+    /**
+     * @return float
+     */
+    public function getDiscount()
+    {
+        return $this->discount;
+    }
+
+    /**
+     * @param float $discount
+     */
+    public function setDiscount(float $discount)
+    {
+        $this->discount = $discount;
+    }
+
+
     
     public function __toString()
     {

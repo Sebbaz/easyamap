@@ -67,5 +67,20 @@ class SettingRepository extends EntityRepository
             }
         }
     }
+
+    public function getBackups($db_name) {
+        $files = scandir(__DIR__."/../../../../backup");
+        $out = [];
+        foreach($files as $file) {
+            if (strpos($file,$db_name)===0) {
+                $out[] = $file;
+            }
+        }
+        $out = array_reverse($out);
+        return $out;
+    }
+    
+
+
    
 }

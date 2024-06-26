@@ -122,8 +122,10 @@ product_show:
     controller: App\Controller\ProductController:show
 
 product_new:
-    path: /product/new
+    path: /product/new/{id}
     controller: App\Controller\ProductController:new
+    defaults:
+        id: null
 
 product_create:
     path: /product/create',
@@ -239,7 +241,10 @@ user_activate:
     path: /user/{id}/activate/{active}
     controller: App\Controller\UserController:activate
 
-    
+donnees_personnelles:
+    path: /donnees_personnelles
+    controller: App\Controller\UserController:displayCurrentUser
+
 distribution:
     path:   /parametres/distribution
     controller: App\Controller\DistributionController:index
@@ -267,8 +272,6 @@ product_distribution:
     controller: App\Controller\ProductDistributionController:index
     defaults:
         page: 1
-    requirements:
-        page: '\d+'
     
 product_distribution_save:
     path:   /product_distribution_save
@@ -331,6 +334,14 @@ contract_payment:
 contrat_list:
     path: liste_contrats
     controller: App\Controller\PurchaseController:index
+    defaults:
+        isArchive: false
+
+contrat_list_archives:
+    path: liste_contrats_archives
+    controller: App\Controller\PurchaseController:index
+    defaults:
+        isArchive: true
     
 contrat_view:
     path: contrat/{id_contract}/{id_user}
@@ -351,12 +362,32 @@ products_next_distribution:
         nb: 4
     
 products_to_ship:
-    path: produits_a_livrer/{date}/{nb}
+    path: produits_a_livrer/{date}/{nb}/{role}
     controller: App\Controller\PurchaseController:getDeliveryNextDistribution
     defaults:
         date: null
         nb: 4
-        
+        role: null
+
+products_to_ship_multi:
+    path: produits_a_livrer_multiamap/{dateDebut}/{dateFin}/{role}
+    controller: App\Controller\PurchaseController:getDeliveryNextDistributionMultiAmap
+    defaults:
+        dateDebut: null
+        dateFin: null
+        role: null
+
+products_to_ship_total:
+    path: produits_a_livrer_total/{date}
+    controller: App\Controller\PurchaseController:getDeliveryNextDistributionTotal
+    defaults:
+        date: null
+
+product_corresp:
+    path: product_corresp
+    controller: App\Controller\PurchaseController:productCorresp
+    methods: POST
+
 payment_received:
     path: payment_received
     controller:  App\Controller\PaymentController:paymentReceived
@@ -432,7 +463,7 @@ tableau_livraisons:
         date: null
     
 rapport:
-    path: rapport
+    path: rapport/{role}
     controller: App\Controller\PurchaseController:rapport
 #changement ordre
 
@@ -510,7 +541,7 @@ rapport_distribution_save:
     methods: POST|PUT
     
 shift:
-    path: report_produit
+    path: report_produit/{page}
     controller: App\Controller\ProductDistributionController:shiftProduct
     defaults:
         page: 1
@@ -519,3 +550,27 @@ shift_save:
     path: shift_save
     controller: App\Controller\ProductDistributionController:shiftSave
     methods: POST
+
+donnees:
+    path: donnees
+    controller: App\Controller\HomeController:donnees
+
+download_backup:
+    path: download_backup/{file}
+    controller: App\Controller\HomeController:downloadBackup
+
+api_farms:
+    path: api/farms
+    controller: App\Controller\ApiController:getAllFarms
+    methods: GET
+
+api_products:
+    path: api/products
+    controller: App\Controller\ApiController:getAllProducts
+    methods: GET
+
+tableau_livraison_par_produit:
+    path: tableau_livraison_par_produit/{dateDebutStr}
+    controller: App\Controller\PurchaseController:tableauLivraisonParProduit
+    defaults:
+        dateDebutStr: null

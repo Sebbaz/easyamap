@@ -31,8 +31,18 @@ class ProductController extends AmapBaseController
         elseif ($user->isReferent())//référent : on voit les produits des fermes pour lesqueslles on est référent
           $entities = $em->getRepository('App\Entity\Product')->findAllForReferent($user);
 
+        $farms = [];
+        foreach ($entities as $entity) {
+            $farmName = $entity->getFkFarm()->getLabel();
+            if (!in_array($farmName, $farms)) {
+                $farms[] = $farmName;
+            }
+        }
+        sort($farms);
+
         return $this->render('Product/index.html.twig', array(
             'entities' => $entities,
+            'farms' => $farms
         ));
     }
     /**
@@ -93,14 +103,29 @@ class ProductController extends AmapBaseController
      * Displays a form to create a new Product entity.
      *
      */
-    public function new()
+    public function new($id = null)
     {
         $this->denyAccessUnlessGranted('ROLE_REFERENT');
         
         $entity = new Product();
+        if ($id != null) {//dupliquer
+            $em = $this->getDoctrine()->getManager();
+            $initial_product = $em->getRepository('App\Entity\Product')->find($id);
+            if ($initial_product != null) {
+                $entity->setLabel($initial_product->getLabel());
+                $entity->setFkFarm($initial_product->getFkFarm());
+                $entity->setUnit($initial_product->getUnit());
+                $entity->setDescription($initial_product->getDescription());
+                $entity->setBasePrice($initial_product->getBasePrice());
+                $entity->setIsSubscription($initial_product->getIsSubscription());
+                $entity->setIsCertified($initial_product->getIsCertified());
+            }
+        }
+
         $form   = $this->createCreateForm($entity);
 
         return $this->render('Product/new.html.twig', array(
+            'id' => $id,
             'entity' => $entity,
             'form'   => $form->createView(),
         ));

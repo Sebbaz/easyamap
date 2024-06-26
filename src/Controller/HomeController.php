@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use App\Util\Amap;
 use Symfony\Component\HttpFoundation\Response;
 use App\Util\Cache;
 use App\Util\GitUtils;
@@ -43,19 +44,29 @@ class HomeController extends AmapBaseController
     
     protected function getMenuFarmer($user) {
         $list = array();
-        $list[] = array(
-            $this->generateUrl('products_to_ship'),
-            'circle-arrow-down',
-            'Produits à livrer',
-            'Liste des produits à livrer aux prochaines distributions.'
+        if (true||Amap::isEasyamapMainServer()) {
+            $list[] = array(
+                $this->generateUrl('products_to_ship_multi',['role'=>'farmer','dateDebut'=>' ', 'dateFin' => ' ']),
+                'circle-arrow-down',
+                'Produits à livrer',
+                'Liste des produits à livrer aux prochaines distributions.'
             );
+        } else {
+            $list[] = array(
+                $this->generateUrl('products_to_ship',['role'=>'farmer','date'=>'0', 'nb'=>4]),
+                'circle-arrow-down',
+                'Produits à livrer',
+                'Liste des produits à livrer aux prochaines distributions.'
+            );
+        }
+
         $list[] = array(
             $this->generateUrl('contract_farmer'),
             'blackboard',
             'Contrats',
             'Comptes-rendus des contrats');
         $list[] = array(
-             $this->generateUrl('rapport'),
+             $this->generateUrl('rapport',['role'=>'farmer']),
              'stats',
              'Rapports',
              'Statistiques par produit'
@@ -126,7 +137,7 @@ class HomeController extends AmapBaseController
         if (!$user->hasRole(User::ROLE_ADMIN))
         {
         $list[] = array(
-            $this->generateUrl('products_to_ship'),
+            $this->generateUrl('products_to_ship',['role'=>'referent','date'=>'0', 'nb'=>4]),
             'circle-arrow-down',
             'Produits à livrer',
             'Liste des produits à livrer aux prochaines distributions.'
@@ -172,7 +183,7 @@ class HomeController extends AmapBaseController
              'Tableau des livraisons par distribution'
              );
          $list[] = array(
-             $this->generateUrl('rapport'),
+             $this->generateUrl('rapport',['role'=>'referent']),
              'stats',
              'Rapports',
              'Statistiques par produit'
@@ -241,6 +252,14 @@ class HomeController extends AmapBaseController
             'Paramètres',
             'Définir les paramètres de l\'application et les dates de distribution.'
             );
+        if (Amap::isEasyamapMainServer()) {
+            $list[] = array(
+                $this->generateUrl('donnees'),
+                'hdd',
+                'Données de l\'application',
+                'Visualiser et récupérer les données de l\'application.'
+            );
+        }
         return $list;
     }
     
@@ -287,5 +306,34 @@ class HomeController extends AmapBaseController
     
     public function environment() {
         return new Response($_SERVER['APP_ENV']);
+    }
+
+    public function donnees() {
+        $this->denyAccessUnlessGranted('ROLE_ADMIN');
+        $em = $this->getDoctrine()->getManager();
+        $backups = $em->getRepository("App\Entity\Setting")->getBackups($em->getConnection()->getDatabase());
+        return $this->render('Home/donnees.html.twig', array(
+            'backups' => $backups
+        ));
+    }
+
+    public function downloadBackup($file) {
+        if (strpos($file,'/')!==false) {
+            return;
+        }
+
+        $path = __DIR__."/../../../../backup/".$file;
+        if (!is_file($path)) {
+            return;
+        }
+
+        $file_name = basename($path);
+
+        header("Content-Type: application/zip");
+        header("Content-Disposition: attachment; filename=$file_name");
+        header("Content-Length: " . filesize($path));
+
+        readfile($path);
+        exit;
     }
 }

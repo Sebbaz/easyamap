@@ -23,8 +23,17 @@
             {{ contract.description|nl2br }}
         </p>
         {% endif %}
-        
-        {% if contract.countPurchaseSince is not null %}
+       {% if contract.discount is not empty %}
+           <p class="text-center text-danger bg-info">
+            REMISE<br />
+            <span style="font-size:200%">{{ contract.discount }}%</span>
+            <br />
+            <small>sur l'ensemble de la commande</small>
+           </p>
+       {% endif %}
+
+
+       {% if contract.countPurchaseSince is not null %}
  
       <table class="table table-bordered">
           <tr><th colspan=2" class="bg-grey text-center">Quantités déjà commandées depuis le {{ contract.countPurchaseSince|full_date_fr }}</th></tr>
@@ -40,7 +49,7 @@
        {% if contract.fillDateEnd is not empty %}
             <div class="pull-right text-right">
                 <p class="small">A remplir au plus tard le :</p>
-                <h4><span class="label label-warning" style="font-weight:bold;border-radius:100px;">{{ contract.fillDateEnd|full_date_fr }}</span></h4>
+                <h4><span class="label label-warning" style="font-weight:bold;border-radius:100px;">{{ contract.fillDateEnd|full_date_fr }} {%  if contract.autoEndHour %}à {{ contract.autoEndHour }}h{% endif %}</span></h4>
             </div>
     {% endif %}
    </div>
@@ -97,7 +106,7 @@
           <tr>
             <td class="success text-center" colspan="3"><b>{{ product.fkFarm }}</b><br />({{ product.fkFarm.productType }})<br /><small>Référent{% if product.fkFarm.getReferents()|length > 1 %}s{% endif %} : 
                     {% for referent in product.fkFarm.getReferents() %}
-                            {{ referent }} (<a href="mailto:{{ referent.email }}">{{ referent.email }}</a>){% if not loop.last %}, {% endif %}
+                            {{ referent }} (<a href="mailto:{{ referent.email }}">{{ referent.email }}</a>{%  if referent.tel1 is defined %} - {{ referent.tel1 }}{% endif %}{%  if referent.tel2 is defined %} - {{ referent.tel2 }}{% endif %}){% if not loop.last %}, {% endif %}
                     {% endfor %}</small></td>
             <td colspan="{{ distributions|length }}" class="success text-center" style="border-left:none;"><small>{{ product.fkFarm.description|nl2br }}{% if product.fkFarm.link != ''%}<br /><a href="{{ product.fkFarm.link }}" target="_blank">{{ product.fkFarm.link }}</a>{% endif %}</small></td>
             
@@ -111,7 +120,12 @@
                 <div class="payment">Total</div>
                 <div class="payment_right">{% if payments[product.fkFarm.idFarm].amount == 0 %}
                     Le total sera calculé en fonction du poids à la livraison.{% else %}
-                    {{ payments[product.fkFarm.idFarm].amount|number_format(2,',',' ')~' €'}}
+
+                    {% if contract.discount is not empty %}
+                        <span style="text-decoration: line-through;">{{ ((payments[product.fkFarm.idFarm].amount/(100-contract.discount))*100)|round(2)|number_format(2,',',' ')~' €' }}</span>
+                    {%  endif %}
+                    {{ payments[product.fkFarm.idFarm].amount|round(2)|number_format(2,',',' ')~' €'}}
+
                     {% endif %}
                 </div>
                     <div class="payment not-first">Paiement reçu</div><div class="payment_right not-first">{% if payments[product.fkFarm.idFarm].received==0 %}non{% else %}oui{% endif %}</div>

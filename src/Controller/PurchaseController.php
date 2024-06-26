@@ -2,6 +2,8 @@
 
 namespace App\Controller;
 
+use App\Entity\User;
+use App\Util\Amap;
 use Symfony\Component\HttpFoundation\Request;
 use App\Util\Utils;
 use Symfony\Component\HttpFoundation\Session\Session;
@@ -12,7 +14,7 @@ use Symfony\Component\Security\Core\Exception\AccessDeniedException;
  */
 class PurchaseController extends AmapBaseController
 {
-  public function index()
+  public function index($isArchive = false)
   {
     $this->denyAccessUnlessGranted('ROLE_ADHERENT');    
     
@@ -22,7 +24,8 @@ class PurchaseController extends AmapBaseController
     $filled = $em->getRepository('App\Entity\Contract')->getFilledContracts($user);
           return $this->render('Purchase/index.html.twig', array(
             'contracts' => $contracts,
-            'filled' => $filled
+            'filled' => $filled,
+            'isArchive' => $isArchive
         ));
   } 
   
@@ -168,10 +171,13 @@ class PurchaseController extends AmapBaseController
         ));
   }
   
-  public function getDeliveryNextDistribution($date = null, $nb = 4)
+  public function getDeliveryNextDistribution($date = null, $nb = 4, $role=null)
   {
       $em = $this->getDoctrine()->getManager();
-      
+      if ($role != null) {
+          $session = new Session();
+          $session->set('role', 'ROLE_' . strtoupper($role));
+      }
       if ($date === null || !preg_match("/^\d{4}\-\d{2}-\d{2}$/",$date))
       {
           $date = $em->getRepository('App\Entity\Distribution')->findNextDate();
@@ -204,7 +210,78 @@ class PurchaseController extends AmapBaseController
             'direction' => $direction
         ));
   }
-  
+
+    public function getDeliveryNextDistributionMultiAmap($dateDebut = null, $dateFin=null, $role=null)
+    {
+        $this->denyAccessUnlessGranted(['ROLE_FARMER','ROLE_ADHERENT']);
+        if ($role != null) {
+            $session = new Session();
+            $session->set('role', 'ROLE_' . strtoupper($role));
+        }
+        if ($dateDebut == null || !preg_match("/^\d{4}\-\d{2}-\d{2}$/", $dateDebut)) {
+            $dateDebut = new \DateTime();
+        }
+        else {
+            $dateDebut = \DateTime::createFromFormat('Y-m-d', $dateDebut);
+        }
+
+        if ($dateFin == null || !preg_match("/^\d{4}\-\d{2}-\d{2}$/", $dateFin)) {
+            $dateFin = clone $dateDebut;
+            $interval = new \DateInterval('P7D');
+            $dateFin->add($interval);
+        }
+        else {
+            $dateFin = \DateTime::createFromFormat('Y-m-d', $dateFin);
+        }
+
+        $em = $this->getDoctrine()->getManager();
+        $user = $this->get('security.token_storage')->getToken()->getUser();
+        $farms = $em->getRepository('App\Entity\Farm')->findAllOrderByLabel($user);
+        $farmsMulti = $em->getRepository('App\Entity\Farm')->getFarmsMulti($farms, $em->getConnection()->getDatabase());
+        $list = $em->getRepository('App\Entity\Purchase')->getProductsToShipMulti($dateDebut, $dateFin, $farmsMulti);
+        $dates = $this->retrieveDatesFromList($list);
+        return $this->render('Purchase/distributionSummaryMulti.html.twig', array(
+            'list' => $list,
+            'group_by' => 'farm',
+            'dates' => $dates,
+            'dateDebut' => $dateDebut,
+            'dateFin' => $dateFin,
+            'urlTemplate' => 'produits_a_livrer_multiamap/%DATE_DEBUT%/%DATE_FIN%',
+            'direction' => "H"
+        ));
+    }
+
+    public function getDeliveryNextDistributionTotal($date= null) {
+        if (!Amap::isEasyamapMainServer()) {
+            throw $this->createAccessDeniedException('Accès refusé');
+        }
+        $this->denyAccessUnlessGranted(['ROLE_FARMER','ROLE_ADHERENT']);
+
+        if ($date == null) {
+            $date = new \DateTime();
+        }
+        else {
+            $date = \DateTime::createFromFormat('Y-m-d', $date);
+        }
+        $em = $this->getDoctrine()->getManager();
+        $user = $this->get('security.token_storage')->getToken()->getUser();
+        $farms = $em->getRepository('App\Entity\Farm')->findAllOrderByLabel($user);
+        $farmsMulti = $em->getRepository('App\Entity\Farm')->getFarmsMulti($farms, $em->getConnection()->getDatabase());
+        $productsMulti = $em->getRepository('App\Entity\Product')->getProductsMulti($farmsMulti);
+    }
+
+    private function retrieveDatesFromList($list) {
+        $datesRet = [];
+        foreach($list as $entity => $dates) {
+            foreach($dates as $date => $items) {
+                if (!in_array($date, $datesRet)) {
+                    $datesRet[] = $date;
+                }
+            }
+        }
+        sort($datesRet);
+        return $datesRet;
+    }
   
   //$farms = $em->getRepository('App\Entity\Farm')->findAllOrderByLabel($user);
   /*public function getProductsNextDistribution(Request $request)
@@ -330,7 +407,6 @@ class PurchaseController extends AmapBaseController
   
   public function listDistributionAdherent($date = null, $nb = 4)
   {
-      $this->denyAccessUnlessGranted('ROLE_ADMIN');
       $em = $this->getDoctrine()->getManager();
       if ($date === null || !preg_match("/^\d{4}\-\d{2}-\d{2}$/",$date))
       {
@@ -358,7 +434,6 @@ class PurchaseController extends AmapBaseController
  
   public function listDistributionFarm($date = null, $nb = 4)
   {
-      $this->denyAccessUnlessGranted('ROLE_ADMIN');
       $em = $this->getDoctrine()->getManager();
       if ($date === null || !preg_match("/^\d{4}\-\d{2}-\d{2}$/",$date))
       {
@@ -392,12 +467,23 @@ class PurchaseController extends AmapBaseController
       return $nb;
   }
   
-  public function rapport() {
-      $this->denyAccessUnlessGranted(array('ROLE_REFERENT','ROLE_FARMER'));  
-      $id_farm = isset($_GET['id_farm'])?$_GET['id_farm']:null;
-      $date_debut = isset($_GET['date_debut'])?$_GET['date_debut']:null;
-      $date_fin = isset($_GET['date_fin'])?$_GET['date_fin']:null;
-      
+  public function rapport($role=null)
+  {
+      $this->denyAccessUnlessGranted([User::ROLE_FARMER, User::ROLE_REFERENT]);
+        if ($role != null) {
+            $session = new Session();
+            $session->set('role','ROLE_'.strtoupper($role));
+        }
+
+      $id_farm = isset($_GET['id_farm']) ? $_GET['id_farm'] : null;
+      $date_debut = isset($_GET['date_debut']) ? $_GET['date_debut'] : null;
+      $date_fin = isset($_GET['date_fin']) ? $_GET['date_fin'] : null;
+      $id_user = isset($_GET['id_user']) ? $_GET['id_user'] : null;
+      $hide_empty_products = isset($_GET['hide_empty_products']);
+      if ($id_user == "all") {
+          $id_user = null;
+      }
+
       $user = $this->get('security.token_storage')->getToken()->getUser();
       $em = $this->getDoctrine()->getManager();
       $farms = $em->getRepository('App\Entity\Farm')->findAllOrderByLabel($user);
@@ -419,17 +505,60 @@ class PurchaseController extends AmapBaseController
       else {
           $date_fin = \DateTime::createFromFormat('Y-m-d', $date_fin);
       }
-      
-      $products = $em->getRepository('App\Entity\Product')->findForFarm($farm);
-      $quantities = $em->getRepository('App\Entity\Purchase')->getQuantities($farm->getIdFarm(),$date_debut,$date_fin);
-      
+      $quantities = $em->getRepository('App\Entity\Purchase')->getQuantities($farm->getIdFarm(), $date_debut, $date_fin, $id_user);
+      $products = $em->getRepository('App\Entity\Product')->findForFarm($farm, $hide_empty_products?$quantities['product_list']:[]);
+      $user_list = $em->getRepository('App\Entity\User')->findAllOrderByLastname();
+
       return $this->render('Stats/rapport.html.twig', array(
             'farms' => $farms,
             'quantities' => $quantities,
             'products' => $products,
             'farm' => $farm,
             'date_debut' => $date_debut,
-            'date_fin' => $date_fin
+            'date_fin' => $date_fin,
+            'id_user' => $id_user,
+            'user_list' => $user_list,
+            'hide_empty_products' => $hide_empty_products
         ));
   }
+
+    public function tableauLivraisonParProduit($dateDebutStr = null)
+    {
+        $session = new Session();
+        $session->set('role','ROLE_FARMER');
+        $this->denyAccessUnlessGranted(['ROLE_FARMER','ROLE_ADHERENT']);
+        $dateDebut = new \DateTime();
+        if ($dateDebutStr == null || !preg_match("/^\d{4}\-\d{2}-\d{2}$/", $dateDebutStr)) {
+            $dateDebut->setTimestamp(strtotime('last monday'));
+        }
+        else {
+            //lundi précédent
+            $dateDebut = \DateTime::createFromFormat('Y-m-d', $dateDebutStr);
+            $delta = ($dateDebut->format('w') + 6) % 7;
+            $dateDebut->sub(new \DateInterval('P'.$delta.'D'));
+        }
+
+        $dateFin = clone $dateDebut;
+        $dateFin->add(new \DateInterval('P7D'));
+
+        $em = $this->getDoctrine()->getManager();
+        $user = $this->get('security.token_storage')->getToken()->getUser();
+        $farms = $em->getRepository('App\Entity\Farm')->findAllOrderByLabel($user);
+        $farmsMulti = $em->getRepository('App\Entity\Farm')->getFarmsMulti($farms, $em->getConnection()->getDatabase());
+        $data = $em->getRepository('App\Entity\Purchase')->getProductsToShipMulti2($dateDebut, $dateFin, $farmsMulti);
+
+
+        $dateFin->sub(new \DateInterval('P1D'));//pour l'affichage
+
+        return $this->render('Purchase/tableauLivraisonParProduit.html.twig', array(
+            'amaps' => $data['amaps'],
+            'produits' => $data['produits'],
+            'quantities' => $data['quantities'],
+            'total' => $data['total'],
+            'dateDebut' => $dateDebut,
+            'dateFin' => $dateFin,
+            'urlTemplate' => 'tableau_livraison_par_produit/%DATE%',
+        ));
+    }
+
 }
